@@ -7,6 +7,7 @@ from PIL import Image
 from io import BytesIO
 import sys
 
+
 class PokemonClassifier:
     def __init__(self, model_path):
         # List of Pokemon classes
