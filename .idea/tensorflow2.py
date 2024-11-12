@@ -19,13 +19,13 @@ def print_memory_usage():
     print(f"Memory usage: {psutil.Process().memory_info().rss / 1024 / 1024:.2f} MB")
 
 # Set paths and parameters
-BASE_DIR = '/kaggle/input/pokemonclassification/PokemonData'
-IMG_SIZE = (160, 160)  # Balanced size
+BASE_DIR = os.path.join(os.getcwd(), 'PokemonData')
+IMG_SIZE = (160, 160)
 BATCH_SIZE = 32
 
 print_memory_usage()
 
-# Create data generators
+# Create data generators with shuffling
 train_datagen = ImageDataGenerator(
     rescale=1./255,
     rotation_range=15,
@@ -37,14 +37,14 @@ train_datagen = ImageDataGenerator(
     validation_split=0.2
 )
 
-# Set up generators
+# Set up generators with shuffling
 train_generator = train_datagen.flow_from_directory(
     BASE_DIR,
     target_size=IMG_SIZE,
     batch_size=BATCH_SIZE,
     class_mode='categorical',
     subset='training',
-    shuffle=True
+    shuffle=True  # Ensure shuffling
 )
 
 validation_generator = train_datagen.flow_from_directory(
@@ -66,62 +66,74 @@ print(f"Training samples: {train_generator.samples}")
 print(f"Validation samples: {validation_generator.samples}")
 print_memory_usage()
 
-# Create the balanced model
-def create_model(input_shape, num_classes):
-    model = models.Sequential([
-        # First Block
-        layers.Conv2D(64, (3, 3), padding='same', input_shape=input_shape),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.Conv2D(64, (3, 3), padding='same'),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
-        # Second Block
-        layers.Conv2D(128, (3, 3), padding='same'),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.Conv2D(128, (3, 3), padding='same'),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
-        # Third Block
-        layers.Conv2D(256, (3, 3), padding='same'),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.Conv2D(256, (3, 3), padding='same'),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
-        # Fourth Block
-        layers.Conv2D(512, (3, 3), padding='same'),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.Conv2D(512, (3, 3), padding='same'),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
-        # Dense Layers
-        layers.Flatten(),
-        layers.Dense(1024),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.Dropout(0.5),
-        layers.Dense(512),
-        layers.BatchNormalization(),
-        layers.Activation('relu'),
-        layers.Dropout(0.5),
-        layers.Dense(num_classes, activation='softmax')
-    ])
+def create_pokemon_model(input_shape=(160, 160, 3), num_classes=150):
+    inputs = layers.Input(shape=input_shape)
+    # Data Augmentation
+    x = layers.RandomRotation(0.1)(inputs)
+    x = layers.RandomZoom(0.1)(x)
+    x = layers.RandomFlip("horizontal")(x)
+    # First Block
+    x = layers.Conv2D(64, (3, 3), padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.Conv2D(64, (3, 3), padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.25)(x)
+    # Second Block
+    x = layers.Conv2D(128, (3, 3), padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.Conv2D(128, (3, 3), padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.25)(x)
+    # Third Block
+    x = layers.Conv2D(256, (3, 3), padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.Conv2D(256, (3, 3), padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.25)(x)
+    # Fourth Block
+    x = layers.Conv2D(512, (3, 3), padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.Conv2D(512, (3, 3), padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.25)(x)
+    # Fifth Block
+    x = layers.Conv2D(1024, (3, 3), padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.Conv2D(1024, (3, 3), padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.MaxPooling2D((2, 2))(x)
+    x = layers.Dropout(0.25)(x)
+    # Classification Head
+    x = layers.GlobalAveragePooling2D()(x)
+    x = layers.Dense(1024)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.Dropout(0.5)(x)
+    x = layers.Dense(512)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation('relu')(x)
+    x = layers.Dropout(0.5)(x)
+    outputs = layers.Dense(num_classes, activation='softmax')(x)
+    model = models.Model(inputs, outputs)
     return model
 
 # Create and compile model
 print("\nCreating model...")
-model = create_model((IMG_SIZE[0], IMG_SIZE[1], 3), num_classes)
+model = create_pokemon_model((IMG_SIZE[0], IMG_SIZE[1], 3), num_classes)
 model.summary()
 print_memory_usage()
 
@@ -135,9 +147,9 @@ lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
 )
 
 model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=lr_schedule),
+    optimizer=tf.keras.optimizers.Adam(learning_rate=lr_schedule(initial_learning_rate)),
     loss='categorical_crossentropy',
-    metrics=['accuracy']
+    metrics=['accuracy', 'top_k_categorical_accuracy']
 )
 
 # Set up TensorBoard
@@ -161,20 +173,19 @@ history = model.fit(
             verbose=1
         ),
         tf.keras.callbacks.EarlyStopping(
-            monitor='val_accuracy',
-            patience=15,
-            restore_best_weights=True,
-            verbose=1
+            monitor='val_loss',
+            patience=10,
+            restore_best_weights=True
         ),
         tf.keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss',
             factor=0.2,
             patience=5,
-            min_lr=0.00001,
-            verbose=1
+            min_lr=1e-6
         ),
         tensorboard_callback
-    ]
+    ],
+    shuffle=True  # Ensure reshuffling between epochs
 )
 
 # Save full model and weights
