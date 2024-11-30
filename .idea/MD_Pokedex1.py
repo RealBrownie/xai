@@ -46,8 +46,9 @@ class PokemonClassifier:
 
     def download_image(self, url):
         try:
-            response = requests.get(url)
-            img = Image.open(BytesIO(response.content))
+            #response = requests.get(url)
+            #img = Image.open(BytesIO(response.content))
+            img = Image.open(url)
             return img
         except Exception as e:
             print(f"Error downloading image: {e}")
@@ -106,7 +107,7 @@ class PokemonClassifier:
 
 def main():
     # Initialize classifier
-    classifier = PokemonClassifier('./Modelle/best_model.keras')  # Replace with your model path
+    classifier = PokemonClassifier('./Modelle/model_0.781.keras')  # Replace with your model path
 
     # Example usage
     while True:
