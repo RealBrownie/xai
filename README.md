@@ -17,3 +17,5 @@ https://github.com/RealBrownie/xai
 https://huggingface.co/datasets/keremberke/pokemon-classification
 ## Setup
 install required python libraries and run documentation.ipynb
+
+Add .keras-File to ./Modelle
